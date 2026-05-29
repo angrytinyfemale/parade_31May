@@ -64,11 +64,11 @@
   </label>
   <label class="layer-row">
     <input type="checkbox" id="chk-closed" checked>
-    <span class="sw sw-line" style="background:#cc2200"></span>Road Closures
+    <span class="sw sw-line" style="background:#cc2200"></span>Closed to vehicles
   </label>
   <label class="layer-row">
     <input type="checkbox" id="chk-pedonly">
-    <span class="sw sw-dash" style="border-color:#e07000"></span>Pedestrian Only
+    <span class="sw sw-dash" style="border-color:#e07000"></span>Closed to pedestrians
   </label>
   <label class="layer-row">
     <input type="checkbox" id="chk-parks">
@@ -176,9 +176,9 @@ function closureType(closure) {
 function closurePopup(p) {
   const type = closureType(p.closure);
   const badge = {
-    full:    `<span style="color:#cc2200;font-weight:700">⛔ Full closure</span>`,
-    partial: `<span style="color:#b35a00;font-weight:700">⚠ Partial closure</span>`,
-    ped:     `<span style="color:#e07000;font-weight:700">🚶 Pedestrian closure</span>`,
+    full:    `<span style="color:#cc2200;font-weight:700">🚗 Closed to vehicles</span>`,
+    partial: `<span style="color:#b35a00;font-weight:700">🚗 Partial vehicle closure</span>`,
+    ped:     `<span style="color:#e07000;font-weight:700">🚶 Closed to pedestrians</span>`,
   }[type];
 
   let html = `<b>${p.name}</b><br>${badge}`;
