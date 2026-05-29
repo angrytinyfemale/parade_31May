@@ -77,12 +77,12 @@
     <span class="sw sw-line" style="background:#c8a84b"></span>Parade Route
   </label>
   <label class="layer-row">
-    <input type="checkbox" id="chk-closed" checked>
-    <span class="sw sw-line" style="background:#cc2200"></span>Closed to vehicles
+    <input type="checkbox" id="chk-fullclosed" checked>
+    <span class="sw sw-line" style="background:#8B0000"></span>Fully closed
   </label>
   <label class="layer-row">
-    <input type="checkbox" id="chk-pedonly">
-    <span class="sw sw-dash" style="border-color:#e07000"></span>Closed to pedestrians
+    <input type="checkbox" id="chk-closed" checked>
+    <span class="sw sw-line" style="background:#cc2200"></span>Closed to vehicles
   </label>
   <label class="layer-row">
     <input type="checkbox" id="chk-parks">
@@ -167,17 +167,19 @@ L.marker([51.5549, -0.1084], { icon: stadiumIcon })
 function closureType(closure) {
   if (!closure) return "full";
   const c = closure.toLowerCase();
-  if (c.includes("pedestrian")) return "ped";
-  if (c === "closed")           return "full";
-  return "partial";                            // "between X and Y"
+  if (c.includes("fully closed")) return "full_ped";  // no vehicle or pedestrian access
+  if (c.includes("pedestrian"))   return "ped";       // legacy pedestrian-only
+  if (c === "closed")             return "full";
+  return "partial";
 }
 
 function closurePopup(p) {
   const type = closureType(p.closure);
   const badge = {
-    full:    `<span style="color:#cc2200;font-weight:700">🚗 Closed to vehicles</span>`,
-    partial: `<span style="color:#b35a00;font-weight:700">🚗 Partial vehicle closure</span>`,
-    ped:     `<span style="color:#e07000;font-weight:700">🚶 Closed to pedestrians</span>`,
+    full:     `<span style="color:#cc2200;font-weight:700">🚗 Closed to vehicles</span>`,
+    partial:  `<span style="color:#b35a00;font-weight:700">🚗 Partial vehicle closure</span>`,
+    ped:      `<span style="color:#e07000;font-weight:700">🚶 Closed to pedestrians</span>`,
+    full_ped: `<span style="color:#8B0000;font-weight:700">⛔ Fully closed — no vehicle or pedestrian access</span>`,
   }[type];
 
   let html = `<b>${p.name}</b><br>${badge}`;
@@ -188,9 +190,11 @@ function closurePopup(p) {
   return html;
 }
 
-const vehicleFeats = [], pedFeats = [];
+const vehicleFeats = [], fullClosedFeats = [];
 CLOSED_ROADS.features.forEach(f => {
-  (closureType(f.properties.closure) === "ped" ? pedFeats : vehicleFeats).push(f);
+  const t = closureType(f.properties.closure);
+  if (t === "ped" || t === "full_ped") fullClosedFeats.push(f);
+  else vehicleFeats.push(f);
 });
 
 // Add closure layers to map BEFORE parade route so parade renders on top
@@ -199,10 +203,12 @@ const closedLayer = L.geoJSON({type:"FeatureCollection", features:vehicleFeats},
   onEachFeature: (f, l) => l.bindPopup(closurePopup(f.properties))
 }).addTo(map);
 
-const pedOnlyLayer = L.geoJSON({type:"FeatureCollection", features:pedFeats}, {
-  style: () => ({ color:"#e07000", weight:2.5, opacity:0.4, dashArray:"7 5" }),
+// Fully closed (no vehicle or pedestrian access) — darkest red, solid
+const fullClosedLayer = L.geoJSON({type:"FeatureCollection", features:fullClosedFeats}, {
+  style: () => ({ color:"#8B0000", weight:3.5, opacity:0.7 }),
   onEachFeature: (f, l) => l.bindPopup(closurePopup(f.properties))
-});
+}).addTo(map);
+
 
 // ---------------------------------------------------------------------------
 // Closed parks
@@ -226,8 +232,9 @@ const parksLayer = L.geoJSON(CLOSED_PARKS, {
 // Station status lookup (from Arsenal/TfL parade guidance)
 // ---------------------------------------------------------------------------
 const TUBE_STATUS = {
-  "Holloway Road":        { status:"closed",   note:"Closed all day" },
-  "Highbury & Islington": { status:"restricted", note:"Overground exit only. Victoria line not stopping. Not step-free." },
+  "Holloway Road":        { status:"closed", note:"Closed all day" },
+  "Arsenal":              { status:"closed", note:"Closed all day" },
+  "Highbury and Islington": { status:"restricted", note:"Overground exit only. Victoria line not stopping. Not step-free on the day." },
   "Canonbury":            { status:"exit_only",  note:"Exit only" },
 };
 const RAIL_STATUS = {
@@ -328,9 +335,9 @@ paradeLayer.addTo(map);
 // Toggles
 // ---------------------------------------------------------------------------
 [
-  ["chk-parade",  paradeLayer,  true ],
-  ["chk-closed",    closedLayer,    true ],
-  ["chk-pedonly", pedOnlyLayer, true ],
+  ["chk-parade",     paradeLayer,     true ],
+  ["chk-fullclosed", fullClosedLayer, true ],
+  ["chk-closed",     closedLayer,     true ],
   ["chk-parks",   parksLayer,   false],
   ["chk-tube",    tubeLayer,    true ],
   ["chk-rail",    railLayer,    true ],
