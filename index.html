@@ -122,6 +122,28 @@ const paradeLayer = L.geoJSON(PARADE_ROUTE, {
 });
 
 // ---------------------------------------------------------------------------
+// Emirates Stadium marker
+// ---------------------------------------------------------------------------
+const stadiumIcon = L.divIcon({
+  className: "",
+  html: `<div style="
+    background:#8B0000;color:#fff;font-size:11px;font-weight:700;
+    padding:3px 7px;border-radius:4px;white-space:nowrap;
+    box-shadow:0 2px 6px rgba(0,0,0,0.4);
+    border:1.5px solid #fff;
+  ">🏟 Emirates Stadium</div>`,
+  iconAnchor: [75, 12]
+});
+
+L.marker([51.5549, -0.1084], { icon: stadiumIcon })
+  .addTo(map)
+  .bindPopup(
+    `<b>Emirates Stadium</b><br>` +
+    `<span style="color:#8B0000;font-weight:700">⛔ Do not congregate</span><br>` +
+    `<small style="color:#555">Emirates Stadium, Drayton Park and surrounding roads will be closed throughout the parade and will not be accessible to the public. Supporters are encouraged not to congregate around the stadium area, Hornsey Road, Benwell Road or Drayton Park — you will not see the teams from these locations.</small>`
+  );
+
+// ---------------------------------------------------------------------------
 // Road closures — classify each road as full / partial / pedestrian-only
 // ---------------------------------------------------------------------------
 function closureType(closure) {
