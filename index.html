@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arsenal Parade 2025/26 – Road Closures</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; font-family:'Helvetica Neue',Arial,sans-serif; }
+  #map { height:100vh; width:100vw; }
+
+  #controls {
+    position:absolute; top:12px; right:12px; z-index:1000;
+    background:rgba(255,255,255,0.97); border-radius:8px;
+    padding:14px 16px; box-shadow:0 2px 12px rgba(0,0,0,0.18);
+    min-width:210px;
+  }
+  #controls h2 {
+    font-size:13px; font-weight:800; color:#8B0000;
+    text-transform:uppercase; letter-spacing:.06em; margin-bottom:2px;
+  }
+  #controls .event-info {
+    font-size:11px; color:#555; margin-bottom:4px; line-height:1.5;
+  }
+  #controls .closure-times {
+    font-size:10px; color:#888; margin-bottom:10px;
+    padding:4px 6px; background:#f8f8f8; border-radius:4px;
+    border-left:3px solid #cc2200;
+  }
+  #controls h3 {
+    font-size:10px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.06em; color:#bbb; margin:10px 0 6px;
+  }
+  .layer-row {
+    display:flex; align-items:center; gap:8px; margin-bottom:6px;
+    cursor:pointer; font-size:13px; color:#333; user-select:none;
+  }
+  .layer-row input { cursor:pointer; accent-color:#8B0000; }
+  .sw { flex-shrink:0; }
+  .sw-line { width:22px; height:4px; border-radius:2px; }
+  .sw-dash { width:22px; height:0; border-top:3px dashed; }
+  .sw-dot  { width:10px; height:10px; border-radius:50%; }
+  .sw-park { width:12px; height:12px; border-radius:2px; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="controls">
+  <h2>Arsenal Parade 2025/26</h2>
+  <div class="event-info">Sunday 31 May 2026 &middot; Parade 2pm</div>
+  <div class="closure-times">Roads closed 4am &ndash; ~8pm</div>
+
+  <h3>Closures</h3>
+  <label class="layer-row">
+    <input type="checkbox" id="chk-parade" checked>
+    <span class="sw sw-line" style="background:#c8a84b"></span>Parade Route
+  </label>
+  <label class="layer-row">
+    <input type="checkbox" id="chk-closed" checked>
+    <span class="sw sw-line" style="background:#cc2200"></span>Road Closures
+  </label>
+  <label class="layer-row">
+    <input type="checkbox" id="chk-pedonly">
+    <span class="sw sw-dash" style="border-color:#e07000"></span>Pedestrian Only
+  </label>
+  <label class="layer-row">
+    <input type="checkbox" id="chk-parks">
+    <span class="sw sw-park" style="background:#2e7d32;opacity:0.7"></span>Closed Parks
+  </label>
+
+  <h3>Transport</h3>
+  <label class="layer-row">
+    <input type="checkbox" id="chk-tube" checked>
+    <span class="sw sw-dot" style="background:#c62828"></span>Tube / Overground
+  </label>
+  <label class="layer-row">
+    <input type="checkbox" id="chk-rail" checked>
+    <span class="sw sw-dot" style="background:#388E3C"></span>Rail Stations
+  </label>
+  <label class="layer-row">
+    <input type="checkbox" id="chk-bus">
+    <span class="sw sw-dot" style="background:#1565C0"></span>Bus Stops
+  </label>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+<script src="geojson/closed_roads.js"></script>
+<script src="geojson/parade_route.js"></script>
+<script src="geojson/closed_parks.js"></script>
+<script src="geojson/rail_stations.js"></script>
+<script src="geojson/tube_stations.js"></script>
+<script src="geojson/nearby_bus_stops.js"></script>
+
+<script>
+const map = L.map("map").setView([51.553, -0.103], 14);
+
+L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+  attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  subdomains:"abcd", maxZoom:19
+}).addTo(map);
+
+// ---------------------------------------------------------------------------
+// Parade route — defined first but added to map after closure layers
+// so it sits on top in SVG z-order
+// ---------------------------------------------------------------------------
+const paradeLayer = L.geoJSON(PARADE_ROUTE, {
+  style: () => ({ color:"#c8a84b", weight:6, opacity:1 }),
+  onEachFeature: (f, l) => l.bindPopup(
+    `<b>Parade Route</b><br>Arsenal FC 2025/26<br>` +
+    `<small style="color:#888">Sunday 31 May &middot; 2pm start</small>`
+  )
+});
+
+// ---------------------------------------------------------------------------
+// Road closures — classify each road as full / partial / pedestrian-only
+// ---------------------------------------------------------------------------
+function closureType(closure) {
+  if (!closure) return "full";
+  const c = closure.toLowerCase();
+  if (c.includes("pedestrian")) return "ped";
+  if (c === "closed")           return "full";
+  return "partial";                            // "between X and Y"
+}
+
+function closurePopup(p) {
+  const type = closureType(p.closure);
+  const badge = {
+    full:    `<span style="color:#cc2200;font-weight:700">⛔ Full closure</span>`,
+    partial: `<span style="color:#b35a00;font-weight:700">⚠ Partial closure</span>`,
+    ped:     `<span style="color:#e07000;font-weight:700">🚶 Pedestrian closure</span>`,
+  }[type];
+
+  let html = `<b>${p.name}</b><br>${badge}`;
+  if (type !== "full") {
+    html += `<br><small style="color:#555">${p.closure.replace(/\s*\(pedestrians? only\)/i,"").trim()}</small>`;
+  }
+  html += `<br><small style="color:#999">Closed 4am – ~8pm, 31 May 2026</small>`;
+  return html;
+}
+
+const vehicleFeats = [], pedFeats = [];
+CLOSED_ROADS.features.forEach(f => {
+  (closureType(f.properties.closure) === "ped" ? pedFeats : vehicleFeats).push(f);
+});
+
+// Add closure layers to map BEFORE parade route so parade renders on top
+const closedLayer = L.geoJSON({type:"FeatureCollection", features:vehicleFeats}, {
+  style: () => ({ color:"#cc2200", weight:3, opacity:0.45 }),
+  onEachFeature: (f, l) => l.bindPopup(closurePopup(f.properties))
+}).addTo(map);
+
+const pedOnlyLayer = L.geoJSON({type:"FeatureCollection", features:pedFeats}, {
+  style: () => ({ color:"#e07000", weight:2.5, opacity:0.4, dashArray:"7 5" }),
+  onEachFeature: (f, l) => l.bindPopup(closurePopup(f.properties))
+});
+
+// ---------------------------------------------------------------------------
+// Closed parks
+// ---------------------------------------------------------------------------
+const parkIcon = L.divIcon({
+  className:"",
+  html:`<div style="width:11px;height:11px;background:#2e7d32;border-radius:2px;border:1.5px solid #fff;box-shadow:0 0 3px rgba(0,0,0,.4);opacity:0.85"></div>`,
+  iconSize:[11,11], iconAnchor:[5.5,5.5]
+});
+
+const parksLayer = L.geoJSON(CLOSED_PARKS, {
+  pointToLayer: (f, ll) => L.marker(ll, {icon: parkIcon}),
+  onEachFeature: (f, l) => l.bindPopup(
+    `<b>${f.properties.name}</b><br>` +
+    `<span style="color:#2e7d32;font-weight:600">🌳 Closed</span>` +
+    `<br><small style="color:#999">Closed all day, 31 May 2026</small>`
+  )
+});
+
+// ---------------------------------------------------------------------------
+// Tube / Overground
+// ---------------------------------------------------------------------------
+const tubeIcon = L.divIcon({
+  className:"",
+  html:`<div style="width:10px;height:10px;background:#c62828;border-radius:50%;border:2px solid #fff;box-shadow:0 0 3px rgba(0,0,0,.4)"></div>`,
+  iconSize:[10,10], iconAnchor:[5,5]
+});
+
+const tubeLayer = L.geoJSON(TUBE_STATIONS, {
+  pointToLayer: (f, ll) => L.marker(ll, {icon:tubeIcon}),
+  onEachFeature: (f, l) => {
+    const p = f.properties;
+    l.bindPopup(
+      `<b>${p.name}</b><br><small>Tube / Overground</small>` +
+      (p.zone     ? `<br>Zone ${p.zone}`  : "") +
+      (p.postcode ? `<br>${p.postcode}`   : "")
+    );
+  }
+}).addTo(map);
+
+// ---------------------------------------------------------------------------
+// Rail stations
+// ---------------------------------------------------------------------------
+const railIcon = L.divIcon({
+  className:"",
+  html:`<div style="width:10px;height:10px;background:#388E3C;border-radius:50%;border:2px solid #fff;box-shadow:0 0 3px rgba(0,0,0,.4)"></div>`,
+  iconSize:[10,10], iconAnchor:[5,5]
+});
+
+const railLayer = L.geoJSON(RAIL_STATIONS, {
+  pointToLayer: (f, ll) => L.marker(ll, {icon:railIcon}),
+  onEachFeature: (f, l) => {
+    const p = f.properties;
+    l.bindPopup(`<b>${p.name}</b><br><small>Rail</small>${p.postcode?`<br>${p.postcode}`:""}`);
+  }
+}).addTo(map);
+
+// ---------------------------------------------------------------------------
+// Bus stops (clustered)
+// ---------------------------------------------------------------------------
+const busIcon = L.divIcon({
+  className:"",
+  html:`<div style="width:8px;height:8px;background:#1565C0;border-radius:50%;border:1.5px solid #fff;box-shadow:0 0 2px rgba(0,0,0,.4)"></div>`,
+  iconSize:[8,8], iconAnchor:[4,4]
+});
+
+const busCluster = L.markerClusterGroup({
+  maxClusterRadius:35,
+  disableClusteringAtZoom:16,
+  iconCreateFunction: c => L.divIcon({
+    html:`<div style="width:26px;height:26px;background:#1565C0;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)">${c.getChildCount()}</div>`,
+    className:"", iconSize:[26,26], iconAnchor:[13,13]
+  })
+});
+
+L.geoJSON(BUS_STOPS, {
+  pointToLayer: (f, ll) => L.marker(ll, {icon:busIcon}),
+  onEachFeature: (f, l) => {
+    const p = f.properties;
+    l.bindPopup(
+      `<b>${p.name||"Bus Stop"}</b>` +
+      (p.number    ? `<br>Stop ${p.number}`    : "") +
+      (p.road      ? `<br>${p.road}`           : "") +
+      (p.direction ? `<br>Dir: ${p.direction}` : "")
+    );
+  }
+}).addTo(busCluster);
+
+// Parade added last so it sits on top of closure layers in SVG z-order
+paradeLayer.addTo(map);
+
+// ---------------------------------------------------------------------------
+// Toggles
+// ---------------------------------------------------------------------------
+[
+  ["chk-parade",  paradeLayer,  true ],
+  ["chk-closed",  closedLayer,  true ],
+  ["chk-pedonly", pedOnlyLayer, false],
+  ["chk-parks",   parksLayer,   false],
+  ["chk-tube",    tubeLayer,    true ],
+  ["chk-rail",    railLayer,    true ],
+  ["chk-bus",     busCluster,   false],
+].forEach(([id, layer, on]) => {
+  const chk = document.getElementById(id);
+  chk.checked = on;
+  if (on) map.addLayer(layer);
+  chk.addEventListener("change", () => {
+    if (chk.checked) {
+      map.addLayer(layer);
+      // Keep parade route on top whenever any closure layer is re-added
+      paradeLayer.bringToFront();
+    } else {
+      map.removeLayer(layer);
+    }
+  });
+});
+</script>
+</body>
+</html>
