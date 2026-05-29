@@ -55,10 +55,6 @@
 
   <h3>Closures</h3>
   <label class="layer-row">
-    <input type="checkbox" id="chk-exclusion" checked>
-    <span class="sw sw-dot" style="background:#cc0000;border-radius:2px;opacity:0.5;width:14px;height:14px;border:2px dashed #8B0000"></span>Exclusion Zone
-  </label>
-  <label class="layer-row">
     <input type="checkbox" id="chk-parade" checked>
     <span class="sw sw-line" style="background:#c8a84b"></span>Parade Route
   </label>
@@ -124,43 +120,6 @@ const paradeLayer = L.geoJSON(PARADE_ROUTE, {
     `<small style="color:#888">Sunday 31 May &middot; 2pm start</small>`
   )
 });
-
-// ---------------------------------------------------------------------------
-// Emirates Stadium exclusion zone — no public access during parade
-// ---------------------------------------------------------------------------
-const EXCLUSION_ZONE = {
-  type: "Feature",
-  properties: { name: "Emirates Stadium Exclusion Zone" },
-  geometry: {
-    type: "Polygon",
-    coordinates: [[
-      [-0.1150, 51.5608],  // NW — Holloway Rd / Hornsey Rd
-      [-0.1075, 51.5625],  // N  — along Hornsey Rd
-      [-0.1005, 51.5610],  // NE — Hornsey Rd east
-      [-0.0990, 51.5555],  // E  — east of stadium
-      [-0.1020, 51.5505],  // SE — Benwell Rd / Bryantwood Rd
-      [-0.1095, 51.5500],  // S  — Whistler St area
-      [-0.1155, 51.5530],  // SW — Drayton Park / Ronalds Rd
-      [-0.1150, 51.5608],  // close
-    ]]
-  }
-};
-
-const exclusionLayer = L.geoJSON(EXCLUSION_ZONE, {
-  style: () => ({
-    color:       "#8B0000",
-    weight:      2,
-    opacity:     0.8,
-    fillColor:   "#cc0000",
-    fillOpacity: 0.12,
-    dashArray:   "6 3",
-  }),
-  onEachFeature: (f, l) => l.bindPopup(
-    `<b>Emirates Stadium Exclusion Zone</b><br>` +
-    `<span style="color:#8B0000;font-weight:700">⛔ No public access</span><br>` +
-    `<small style="color:#555">Stadium, Drayton Park and surrounding roads closed throughout the parade. Do not congregate in this area.</small>`
-  )
-}).addTo(map);
 
 // ---------------------------------------------------------------------------
 // Road closures — classify each road as full / partial / pedestrian-only
@@ -329,8 +288,7 @@ paradeLayer.addTo(map);
 // Toggles
 // ---------------------------------------------------------------------------
 [
-  ["chk-exclusion", exclusionLayer, true ],
-  ["chk-parade",    paradeLayer,    true ],
+  ["chk-parade",  paradeLayer,  true ],
   ["chk-closed",    closedLayer,    true ],
   ["chk-pedonly", pedOnlyLayer, false],
   ["chk-parks",   parksLayer,   false],
