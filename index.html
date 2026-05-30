@@ -24,7 +24,7 @@
   #banner p {
     font-size:12px; opacity:0.92; margin:0; line-height:1.4;
   }
-  #map { height:100vh; width:100vw; padding-top:0; }
+  #map { height:100vh; height:100dvh; width:100vw; padding-top:0; }
 
   #controls {
     position:absolute; top:62px; right:12px; z-index:1000;
@@ -53,6 +53,45 @@
     cursor:pointer; font-size:13px; color:#333; user-select:none;
   }
   .layer-row input { cursor:pointer; accent-color:#8B0000; }
+  #links {
+    position:absolute; bottom:12px; left:50%; transform:translateX(-50%);
+    z-index:1000; background:rgba(255,255,255,0.95); border-radius:6px;
+    padding:7px 14px; box-shadow:0 2px 8px rgba(0,0,0,0.15);
+    font-size:11px; white-space:nowrap; display:flex; gap:14px;
+  }
+  #links a { color:#8B0000; text-decoration:none; font-weight:600; }
+  #links a:hover { text-decoration:underline; }
+
+  /* Toggle button — visible on mobile only */
+  #toggle-btn {
+    display:none;
+    position:absolute; bottom:60px; right:12px; z-index:1002;
+    background:#8B0000; color:#fff; border:none; border-radius:50%;
+    width:46px; height:46px; font-size:20px; line-height:1;
+    cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.35);
+    align-items:center; justify-content:center;
+  }
+
+  @media (max-width: 640px) {
+    #banner { flex-direction:column; gap:3px; padding:8px 12px; }
+    #banner h1 { font-size:12px; }
+    #banner p  { font-size:10px; }
+
+    #controls {
+      top:auto; bottom:115px; right:8px; left:8px;
+      min-width:unset; max-height:55vh; overflow-y:auto;
+      display:none;
+    }
+    #controls.open { display:block; }
+
+    #toggle-btn { display:flex; }
+
+    #links {
+      white-space:normal; flex-wrap:wrap; justify-content:center;
+      gap:8px; font-size:10px; padding:6px 10px;
+      bottom:8px; width:calc(100% - 80px);
+    }
+  }
   .sw { flex-shrink:0; }
   .sw-line { width:22px; height:4px; border-radius:2px; }
   .sw-dash { width:22px; height:0; border-top:3px dashed; }
@@ -66,6 +105,12 @@
   <p>⛔ Emirates Stadium, Drayton Park and surrounding roads will be closed. Do not congregate around the stadium — you will not see the teams from these locations.</p>
 </div>
 <div id="map"></div>
+<button id="toggle-btn" aria-label="Toggle layers">☰</button>
+<div id="links">
+  <a href="https://www.islington.gov.uk/roads/arsenal-football-club-parade/road-closures" target="_blank">Islington Road Closures</a>
+  <a href="https://www.arsenal.com/news/champions-parade-what-you-need-know" target="_blank">Arsenal Parade Info</a>
+  <a href="https://help.arsenal.com/support/solutions/articles/101000584937-parade" target="_blank">Arsenal FAQs</a>
+</div>
 <div id="controls">
   <h2>Arsenal Parade 2025/26</h2>
   <div class="event-info">Sunday 31 May 2026 &middot; Parade 2pm</div>
@@ -145,10 +190,10 @@ const paradeLayer = L.geoJSON(PARADE_ROUTE, {
 const stadiumIcon = L.divIcon({
   className: "",
   html: `<div style="
-    background:#8B0000;color:#fff;font-size:11px;font-weight:700;
+    background:#c8a84b;color:#1a1a1a;font-size:11px;font-weight:700;
     padding:3px 7px;border-radius:4px;white-space:nowrap;
     box-shadow:0 2px 6px rgba(0,0,0,0.4);
-    border:1.5px solid #fff;
+    border:1.5px solid #8B0000;
   ">🏟 Emirates Stadium</div>`,
   iconAnchor: [75, 12]
 });
@@ -355,6 +400,13 @@ paradeLayer.addTo(map);
       map.removeLayer(layer);
     }
   });
+});
+// Mobile controls toggle
+const toggleBtn     = document.getElementById('toggle-btn');
+const controlsPanel = document.getElementById('controls');
+toggleBtn.addEventListener('click', () => {
+  const open = controlsPanel.classList.toggle('open');
+  toggleBtn.textContent = open ? '✕' : '☰';
 });
 </script>
 </body>
